@@ -7,6 +7,7 @@ from dataclasses import dataclass
 class Detection:
     """Represents a single person detection."""
 
+    track_id: int | None
     confidence: float
     bbox: tuple[float, float, float, float]  # (x1, y1, x2, y2)
 

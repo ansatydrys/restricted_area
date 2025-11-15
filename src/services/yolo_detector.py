@@ -15,18 +15,32 @@ class YoloPersonDetector:
         self,
         model_path: str | Path,
         confidence_threshold: float = 0.4,
+        use_tracking: bool = True,
+        tracker_config: str | None = "bytetrack.yaml",
     ) -> None:
         self._model = YOLO(str(model_path))
         self._conf = confidence_threshold
+        self._use_tracking = use_tracking
+        self._tracker_config = tracker_config
 
     def detect(self, frame) -> list[Detection]:
-        """Run detection for a single frame."""
-        results = self._model.predict(
-            frame,
-            conf=self._conf,
-            verbose=False,
-            classes=[0],  # person class
-        )
+        """Run detection (or tracking) for a single frame."""
+        if self._use_tracking:
+            results = self._model.track(
+                frame,
+                conf=self._conf,
+                persist=True,
+                tracker=self._tracker_config,
+                verbose=False,
+                classes=[0],  # person class
+            )
+        else:
+            results = self._model.predict(
+                frame,
+                conf=self._conf,
+                verbose=False,
+                classes=[0],
+            )
         return list(self._parse_results(results))
 
     def _parse_results(self, results: Iterable) -> Iterable[Detection]:
@@ -45,7 +59,11 @@ class YoloPersonDetector:
                     float(box.xyxy[0][2]),
                     float(box.xyxy[0][3]),
                 )
+                track_id = None
+                if box.id is not None:
+                    track_id = int(box.id[0])
                 yield Detection(
+                    track_id=track_id,
                     confidence=conf,
                     bbox=(x1, y1, x2, y2),
                 )
